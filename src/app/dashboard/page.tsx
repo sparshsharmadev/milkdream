@@ -201,8 +201,8 @@ export default function DashboardPage() {
                 </button>
               </div>
               
-              <div className="p-8 md:p-16">
-                <div className="flex flex-wrap gap-8 mb-12 border-b border-white/10 pb-8">
+              <div className="p-6 md:p-16">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 border-b border-white/10 pb-6 md:pb-8">
                   <div className="flex items-center space-x-4">
                     <div className="bg-white/5 p-3 border border-white/10">
                       <FileText className="w-5 h-5 text-white" />
@@ -246,7 +246,7 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                <h2 className="text-4xl md:text-6xl font-medium tracking-normal mb-12 text-white font-serif italic leading-tight">
+                <h2 className="text-3xl sm:text-4xl md:text-6xl font-medium tracking-normal mb-8 md:mb-12 text-white font-serif italic leading-tight">
                   {selectedMemory.title}
                 </h2>
 

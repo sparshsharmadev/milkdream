@@ -1,11 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 export default function Home() {
-  const container = {
+  const container: Variants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
@@ -16,7 +16,7 @@ export default function Home() {
     }
   };
 
-  const item = {
+  const item: Variants = {
     hidden: { opacity: 0, y: 20 },
     show: { 
       opacity: 1, 
@@ -42,7 +42,7 @@ export default function Home() {
           </div>
         </motion.div>
 
-        <motion.h1 variants={item} className="text-7xl md:text-[10rem] font-medium tracking-normal mb-8 leading-[0.9] text-white mix-blend-difference font-serif italic">
+        <motion.h1 variants={item} className="text-6xl sm:text-7xl md:text-[10rem] font-medium tracking-normal mb-8 leading-[0.9] text-white mix-blend-difference font-serif italic">
           Milkdream.
         </motion.h1>
         
@@ -50,7 +50,7 @@ export default function Home() {
           Capture exact moments. Speak to the void. Leave notes for your future self. Pure, unadulterated time.
         </motion.p>
 
-        <motion.div variants={item} className="flex flex-col sm:flex-row items-start gap-6">
+        <motion.div variants={item} className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4 sm:gap-6">
           <Link 
             href="/register" 
             className="group relative px-10 py-5 bg-white text-black font-semibold flex items-center justify-center space-x-3 transition-transform hover:scale-105 active:scale-95"

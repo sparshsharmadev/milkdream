@@ -147,10 +147,11 @@ function EditorContent() {
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center space-x-2 bg-white text-black px-6 py-2 font-bold hover:bg-white/90 transition-all disabled:opacity-50"
+            className="flex items-center space-x-2 bg-white text-black px-4 md:px-6 py-2 font-bold text-sm md:text-base hover:bg-white/90 transition-colors"
           >
             <Save className="w-4 h-4" />
-            <span>{loading ? "Sealing..." : "Seal Capsule"}</span>
+            <span className="hidden sm:inline">{loading ? "Sealing..." : "Seal Capsule"}</span>
+            <span className="sm:hidden">{loading ? "Wait..." : "Seal"}</span>
           </button>
         </div>
       </header>
@@ -165,15 +166,15 @@ function EditorContent() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Capsule Title"
-            className="w-full bg-transparent text-5xl md:text-7xl font-medium text-white placeholder-white/20 border-none focus:ring-0 p-0 mb-8 font-serif italic tracking-normal"
+            placeholder="Give it a name..."
+            className="w-full bg-transparent text-4xl sm:text-5xl md:text-7xl font-medium text-white placeholder-white/20 border-none focus:ring-0 p-0 mb-6 md:mb-8 font-serif italic tracking-normal"
           />
 
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your message to the future..."
-            className="flex-1 w-full bg-transparent text-xl md:text-2xl text-white/80 placeholder-white/20 border-none focus:ring-0 p-0 resize-none font-light leading-relaxed"
+            placeholder="Start writing..."
+            className="flex-1 w-full bg-transparent text-lg md:text-2xl text-white/80 placeholder-white/20 border-none focus:ring-0 p-0 resize-none font-light leading-relaxed"
           />
         </motion.div>
       </main>
