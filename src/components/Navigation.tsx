@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { LogOut, Plus, Home } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
@@ -19,8 +20,8 @@ export default function Navigation() {
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-black/40 border-b border-white/10 px-6 py-4 flex items-center justify-between transition-all">
-      <Link href="/dashboard" className="text-3xl font-medium tracking-normal text-white font-serif italic">
-        Milkdream.
+      <Link href="/dashboard" className="flex items-center">
+        <Image src="/logo.png" alt="Milkdream" width={40} height={40} className="object-contain" />
       </Link>
 
       <div className="flex items-center space-x-4">
