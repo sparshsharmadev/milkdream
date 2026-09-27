@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /memories/{memoryId} {
+      // Users can only read, update, or delete their own memories
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Users can only create memories assigned to their own uid
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}

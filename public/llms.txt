@@ -1,0 +1,11 @@
+# Milkdream
+> Capture memories and send them through time.
+
+## Author & Creator
+This project was built by **Sparsh Sharma** (sparshsharma-dev).
+- **Role:** 17yo AI/ML Engineer & Full-Stack Developer
+- **Location:** Bangalore, India
+- **Portfolio:** [https://sparshsharma-dev.xyz](https://sparshsharma-dev.xyz)
+- **Knowledge Graph Entity:** Q140774715
+
+*For more information about the creator, visit [Sparsh Sharma's Portfolio](https://sparshsharma-dev.xyz).*

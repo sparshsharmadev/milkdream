@@ -1,14 +1,42 @@
+/**
+ * Motion Intent: Dashboard with interactive card physics and modal transitions.
+ * - Staggered entrance (stagger: 60ms, duration: 350ms, ease: [0.25, 0.1, 0.25, 1]).
+ * - Card Hover: scale: 1.02, y: -2, 200ms spring (stiffness: 300, damping: 25).
+ * - Modal: scale: 0.95 -> 1, opacity: 0 -> 1, 300ms easeOut; Exit: 200ms easeIn.
+ * - Animates transform and opacity only for smooth 60fps performance.
+ */
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { useEffect, useState, useMemo } from "react";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
+import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Plus, Clock, X, MapPin, Edit2, History, FileText, ChevronDown } from "lucide-react";
-import Tilt from "react-parallax-tilt";
-import SpotlightCard from "@/components/SpotlightCard";
+import { 
+  ArrowLeft,
+  Plus, 
+  Search, 
+  X, 
+  Trash2, 
+  Download, 
+  Edit2, 
+  MapPin, 
+  History, 
+  Compass,
+  ArrowRight
+} from "lucide-react";
+import { 
+  pageVariants, 
+  containerStagger, 
+  cardVariants, 
+  cardHoverMotion, 
+  buttonMotion, 
+  modalVariants, 
+  modalBackdropVariants 
+} from "@/lib/motion.config";
 
 interface Revision {
   title: string;
@@ -21,6 +49,7 @@ interface Memory {
   title: string;
   content: string;
   createdAt: string;
+  tag?: string;
   sessionStartTime?: string;
   sessionEndTime?: string;
   location?: { lat: number; lng: number };
@@ -28,19 +57,40 @@ interface Memory {
 }
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string>("All");
   const router = useRouter();
 
   useEffect(() => {
-    const fetchMemories = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+    if (!selectedMemory) return;
 
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedMemory(null);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedMemory]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const fetchMemories = async () => {
       try {
         const q = query(
           collection(db, "memories"),
@@ -53,9 +103,7 @@ export default function DashboardPage() {
           fetchedMemories.push({ id: doc.id, ...doc.data() } as Memory);
         });
         
-        // Sort in memory to avoid Firebase composite index requirement
         fetchedMemories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        
         setMemories(fetchedMemories);
       } catch (error) {
         console.error("Error fetching memories:", error);
@@ -65,228 +113,367 @@ export default function DashboardPage() {
     };
 
     fetchMemories();
-  }, [router]);
+  }, [user, authLoading, router]);
+
+  const handleDeleteMemory = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!confirm("Are you sure you want to extinguish this memory forever?")) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "memories", id));
+      setMemories((prev) => prev.filter((m) => m.id !== id));
+      if (selectedMemory?.id === id) {
+        setSelectedMemory(null);
+      }
+    } catch (err) {
+      console.error("Error deleting memory:", err);
+      alert("Failed to delete memory capsule.");
+    }
+  };
+
+  const handleExportMemory = (memory: Memory, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const mdContent = `# ${memory.title}
+Date: ${new Date(memory.createdAt).toLocaleString()}
+Resonance Tag: ${memory.tag || "None"}
+Location: ${memory.location ? `${memory.location.lat}, ${memory.location.lng}` : "Unknown"}
+Temporal Span: ${memory.sessionStartTime || "N/A"} - ${memory.sessionEndTime || "N/A"}
+
+---
+
+${memory.content}
+
+${memory.history && memory.history.length > 0 ? `\n## Revision History (${memory.history.length})\n` + memory.history.map((rev, i) => `### Revision ${i + 1} (${new Date(rev.editedAt).toLocaleString()})\n**${rev.title}**\n\n${rev.content}\n`).join("\n") : ""}
+`;
+
+    const blob = new Blob([mdContent], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${memory.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'capsule'}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    memories.forEach((m) => {
+      if (m.tag) tags.add(m.tag);
+    });
+    return ["All", ...Array.from(tags)];
+  }, [memories]);
+
+  const filteredMemories = useMemo(() => {
+    return memories.filter((m) => {
+      const matchesSearch = 
+        m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.content.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTag = selectedTagFilter === "All" || m.tag === selectedTagFilter;
+      return matchesSearch && matchesTag;
+    });
+  }, [memories, searchQuery, selectedTagFilter]);
+
+  const totalWords = useMemo(() => {
+    return memories.reduce((acc, m) => {
+      const words = m.content.trim() ? m.content.trim().split(/\s+/).length : 0;
+      return acc + words;
+    }, 0);
+  }, [memories]);
+
+  if (authLoading) {
+    return (
+      <div className="py-24 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen p-6 md:p-20 relative z-10">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-20 border-b border-white/10 pb-10 gap-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <h1 className="text-5xl md:text-7xl font-medium tracking-normal mb-4 text-white font-serif italic">Archive.</h1>
-            <p className="text-white/50 text-xl font-light">Immutable records of your journey.</p>
-          </motion.div>
-          
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <Link 
-              href="/editor" 
-              className="flex items-center space-x-2 border border-white/20 text-white px-8 py-4 font-light hover:border-white hover:bg-white/5 transition-all active:scale-95 text-lg tracking-wide uppercase"
-            >
-              <Plus className="w-5 h-5" />
-              <span>New Entry</span>
-            </Link>
-          </motion.div>
-        </header>
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="archive-dashboard"
+    >
+      {/* Header */}
+      <header className="dashboard-heading">
+        <div className="dashboard-title-block">
+          <span className="dashboard-overline">PERSONAL MEMORY ARCHIVE / 01</span>
+          <h1>Your archive<span>.</span></h1>
+          <p>A record of moments, kept in your own words.</p>
+        </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          </div>
-        ) : memories.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            className="text-center py-40 border border-white/10 bg-white/5 glass-layer"
-          >
-            <Clock className="w-12 h-12 text-white/20 mx-auto mb-6" />
-            <h3 className="text-3xl font-light text-white mb-2 tracking-tight">The void is empty</h3>
-            <p className="text-white/50 mb-8 font-light text-lg">Create your first entry.</p>
-            <Link 
-              href="/editor" 
-              className="inline-flex items-center space-x-2 text-white border-b border-white hover:text-white/70 hover:border-white/70 transition-all pb-1 text-lg"
+        <div className="dashboard-heading-action">
+          <Link href="/editor">
+            <motion.button
+              {...buttonMotion}
+              className="dashboard-new-entry"
             >
-              <Plus className="w-5 h-5" />
-              <span>Create Entry</span>
-            </Link>
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {memories.map((memory, index) => {
-              return (
-                <motion.div
-                  key={memory.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="h-full"
-                >
-                  <Tilt
-                    tiltMaxAngleX={5}
-                    tiltMaxAngleY={5}
-                    perspective={1000}
-                    scale={1.02}
-                    transitionSpeed={2000}
-                    className="h-full"
-                  >
-                    <div 
-                      onClick={() => setSelectedMemory(memory)} 
-                      className="h-full cursor-pointer"
-                    >
-                      <SpotlightCard className="h-full flex flex-col p-8 group border border-white/10 hover:border-white/20 transition-all">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="bg-white/5 p-3 border border-white/10">
-                            <FileText className="w-5 h-5 text-white" />
-                          </div>
-                          <span className="text-xs tracking-widest uppercase text-white/40 font-mono">
-                            {new Date(memory.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        
-                        <h3 className="text-2xl font-bold mb-4 text-white tracking-tight line-clamp-2">{memory.title}</h3>
-                        
-                        <div className="mt-auto pt-6 border-t border-white/10">
-                          <div>
-                            <p className="text-white/60 line-clamp-3 font-light leading-relaxed mb-4">
-                              {memory.content}
-                            </p>
-                            <div className="flex justify-between items-center mt-4">
-                              <span className="text-xs tracking-widest uppercase text-white/30 group-hover:text-white transition-colors">
-                                Read Entry &rarr;
-                              </span>
-                              {memory.history && memory.history.length > 0 && (
-                                <span className="text-xs tracking-widest uppercase text-white/40 flex items-center space-x-1">
-                                  <History className="w-3 h-3" />
-                                  <span>{memory.history.length} Edits</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </SpotlightCard>
-                    </div>
-                  </Tilt>
-                </motion.div>
-              );
-            })}
+              <Plus className="w-4 h-4" />
+              <span>Write a reflection</span>
+            </motion.button>
+          </Link>
+        </div>
+      </header>
+
+      <section className="dashboard-statline" aria-label="Archive summary">
+        <div><span>REFLECTIONS</span><strong>{memories.length.toLocaleString()}</strong></div>
+        <div><span>WORDS KEPT</span><strong>{totalWords.toLocaleString()}</strong></div>
+        <div><span>THREADS</span><strong>{Math.max(0, allTags.length - 1).toLocaleString()}</strong></div>
+        <p>Each entry keeps its original place in your timeline.</p>
+      </section>
+
+      {/* Search & Tag Filter Toolbar */}
+      {!loading && memories.length > 0 && (
+        <div className="dashboard-toolbar">
+          <div className="dashboard-search">
+            <Search className="dashboard-search-icon" aria-hidden="true" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search reflections..."
+              aria-label="Search reflections"
+              className="dashboard-search-input"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                className="dashboard-clear-search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        )}
+
+          <div className="dashboard-filters" role="group" aria-label="Filter by thread">
+            {allTags.map((tag) => (
+              <motion.button
+                key={tag}
+                {...buttonMotion}
+                onClick={() => setSelectedTagFilter(tag)}
+                className={`dashboard-filter ${
+                  selectedTagFilter === tag
+                    ? "bg-white text-black border-white font-medium"
+                    : "bg-[#121215] text-[#71717a] border-[#27272a] hover:text-white hover:border-[#3f3f46]"
+                }`}
+              >
+                {tag}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Memory Cards Grid */}
+      <section className="dashboard-entries" aria-label="Saved reflections">
+      <div className="dashboard-entries-heading">
+        <h2>{searchQuery || selectedTagFilter !== "All" ? "Matching reflections" : "Recent reflections"}</h2>
+        {!loading && memories.length > 0 && <span>{filteredMemories.length} {filteredMemories.length === 1 ? "entry" : "entries"}</span>}
       </div>
+      {loading ? (
+        <div className="dashboard-loading">
+          <div className="w-7 h-7 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+        </div>
+      ) : memories.length === 0 ? (
+        <div className="dashboard-empty">
+          <Compass className="w-8 h-8" aria-hidden="true" />
+          <span className="dashboard-overline">A FRESH PAGE</span>
+          <h2>Your archive begins here.</h2>
+          <p>Save a thought, a detail, or a moment you want to return to.</p>
+          <Link href="/editor">
+            <motion.button
+              {...buttonMotion}
+              className="dashboard-new-entry"
+            >
+              <Plus className="w-4 h-4" /> Create first reflection
+            </motion.button>
+          </Link>
+        </div>
+      ) : filteredMemories.length === 0 ? (
+        <div className="dashboard-no-results">
+          <p>No reflections match this search.</p>
+          <button
+            onClick={() => { setSearchQuery(""); setSelectedTagFilter("All"); }}
+            className="text-xs text-white underline"
+          >
+            Clear Filters
+          </button>
+        </div>
+      ) : (
+        <motion.div
+          variants={containerStagger}
+          initial="initial"
+          animate="animate"
+          className="dashboard-entry-list"
+        >
+          {filteredMemories.map((memory) => (
+            <motion.article
+              key={memory.id}
+              variants={cardVariants}
+              {...cardHoverMotion}
+              className="dashboard-entry-row"
+            >
+              <button
+                type="button"
+                className="dashboard-entry-open"
+                onClick={() => setSelectedMemory(memory)}
+                aria-label={`Read reflection: ${memory.title}`}
+              >
+                <div className="dashboard-entry-meta">
+                  <span>{new Date(memory.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
+                  {memory.tag && (
+                    <span className="dashboard-entry-tag">
+                      {memory.tag}
+                    </span>
+                  )}
+                </div>
 
+                <h3 className="dashboard-entry-title">{memory.title}</h3>
+
+                <p className="dashboard-entry-excerpt">
+                  {memory.content}
+                </p>
+              </button>
+
+              <div className="dashboard-entry-footer">
+                <button
+                  type="button"
+                  className="dashboard-read-link"
+                  onClick={() => setSelectedMemory(memory)}
+                  aria-label={`Read reflection: ${memory.title}`}
+                >
+                  Read reflection <ArrowRight size={14} />
+                </button>
+                <div className="dashboard-entry-tools">
+                  {memory.history && memory.history.length > 0 && (
+                    <span className="flex items-center space-x-1">
+                      <History className="w-3 h-3" />
+                      <span>{memory.history.length}</span>
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => handleDeleteMemory(memory.id, e)}
+                    aria-label="Delete memory"
+                    className="dashboard-delete-entry"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </motion.article>
+          ))}
+        </motion.div>
+      )}
+      </section>
+
+      {/* Reader Modal (300ms easeOut, reverse 200ms easeIn) */}
       <AnimatePresence>
         {selectedMemory && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl"
-          >
-            <motion.div 
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="bg-[#050505] border border-white/10 w-full max-w-3xl max-h-[85vh] overflow-y-auto relative"
+          <div className="memory-reader-overlay">
+            <motion.div
+              variants={modalBackdropVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              onClick={() => setSelectedMemory(null)}
+              className="memory-reader-backdrop"
+            />
+
+            <motion.section
+              variants={modalVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="memory-reader"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="memory-reader-title"
             >
-              <div className="sticky top-0 float-right p-6 z-10 flex space-x-4 bg-gradient-to-b from-[#050505] to-transparent">
-                <Link 
-                  href={`/editor?id=${selectedMemory.id}`}
-                  className="flex items-center space-x-2 text-white/40 hover:text-white transition-colors px-3 py-1 border border-white/10 bg-black"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  <span className="text-sm font-medium tracking-wide">Edit</span>
-                </Link>
-                <button 
+              <header className="memory-reader-toolbar">
+                <button
+                  type="button"
                   onClick={() => setSelectedMemory(null)}
-                  className="text-white/40 hover:text-white transition-colors bg-black border border-white/10 p-1"
+                  className="memory-reader-back"
                 >
-                  <X className="w-6 h-6" />
+                  <ArrowLeft size={17} />
+                  <span>Back to archive</span>
                 </button>
-              </div>
-              
-              <div className="p-6 md:p-16">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 border-b border-white/10 pb-6 md:pb-8">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-white/5 p-3 border border-white/10">
-                      <FileText className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs tracking-widest uppercase text-white/40 font-mono">Captured</p>
-                      <p className="text-sm tracking-widest uppercase text-white font-mono">
-                        {new Date(selectedMemory.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
 
-                  {(selectedMemory.sessionStartTime || selectedMemory.sessionEndTime) && (
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-white/5 p-3 border border-white/10">
-                        <Clock className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs tracking-widest uppercase text-white/40 font-mono">Temporal Span</p>
-                        <p className="text-sm tracking-widest uppercase text-white font-mono">
-                          {selectedMemory.sessionStartTime ? new Date(selectedMemory.sessionStartTime).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "??"} 
-                          &mdash; 
-                          {selectedMemory.sessionEndTime ? new Date(selectedMemory.sessionEndTime).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "??"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                <div className="memory-reader-actions">
+                  <motion.button
+                    {...buttonMotion}
+                    onClick={() => handleExportMemory(selectedMemory)}
+                    className="memory-reader-action"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export</span>
+                  </motion.button>
+                  <Link href={`/editor?id=${selectedMemory.id}`}>
+                    <motion.button
+                      {...buttonMotion}
+                      className="memory-reader-action"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </motion.button>
+                  </Link>
+                  <motion.button
+                    {...buttonMotion}
+                    onClick={() => handleDeleteMemory(selectedMemory.id)}
+                    aria-label="Delete capsule"
+                    className="memory-reader-action memory-reader-delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </motion.button>
+                </div>
+              </header>
 
+              <div className="memory-reader-content">
+                <div className="memory-reader-kicker">
+                  <span>REFLECTION / {new Date(selectedMemory.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>
+                  {selectedMemory.tag && <span className="memory-reader-tag">{selectedMemory.tag}</span>}
+                </div>
+
+                <h1 id="memory-reader-title" className="memory-reader-title">{selectedMemory.title}</h1>
+
+                <div className="memory-reader-context">
                   {selectedMemory.location && (
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-white/5 p-3 border border-white/10">
-                        <MapPin className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-xs tracking-widest uppercase text-white/40 font-mono">Spatial Anchor</p>
-                        <p className="text-sm tracking-widest uppercase text-white font-mono">
-                          {Math.abs(selectedMemory.location.lat).toFixed(4)}&deg; {selectedMemory.location.lat >= 0 ? 'N' : 'S'}, {Math.abs(selectedMemory.location.lng).toFixed(4)}&deg; {selectedMemory.location.lng >= 0 ? 'E' : 'W'}
-                        </p>
-                      </div>
-                    </div>
+                    <span><MapPin size={14} /> {selectedMemory.location.lat.toFixed(3)}, {selectedMemory.location.lng.toFixed(3)}</span>
                   )}
+                  {selectedMemory.sessionStartTime && <span>Started {selectedMemory.sessionStartTime}</span>}
+                  {selectedMemory.sessionEndTime && <span>Ended {selectedMemory.sessionEndTime}</span>}
                 </div>
 
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-medium tracking-normal mb-8 md:mb-12 text-white font-serif italic leading-tight">
-                  {selectedMemory.title}
-                </h2>
-
-                <div className="prose prose-invert max-w-none mb-16">
-                  <p className="text-xl leading-relaxed text-white/70 font-light whitespace-pre-wrap">
-                    {selectedMemory.content}
-                  </p>
-                </div>
+                <div className="memory-reader-body">{selectedMemory.content}</div>
 
                 {selectedMemory.history && selectedMemory.history.length > 0 && (
-                  <div className="mt-16 border-t border-white/10 pt-16">
-                    <h3 className="text-2xl font-serif italic text-white/80 mb-8">Revision History</h3>
-                    <div className="space-y-4">
+                  <section className="memory-reader-history" aria-label="Revision history">
+                    <div className="memory-reader-history-heading">
+                      <h2>Earlier versions</h2>
+                      <span>{selectedMemory.history.length} revisions</span>
+                    </div>
+                    <div className="memory-revision-list">
                       {selectedMemory.history.map((rev, idx) => (
-                        <details key={idx} className="bg-white/5 border border-white/10 group">
-                          <summary className="p-6 flex justify-between items-center cursor-pointer list-none hover:bg-white/5 transition-colors">
-                            <div className="flex items-center space-x-4">
-                              <History className="w-5 h-5 text-white/40" />
-                              <span className="text-sm font-mono text-white/60">
-                                {new Date(rev.editedAt).toLocaleString()}
-                              </span>
-                            </div>
-                            <ChevronDown className="w-5 h-5 text-white/40 group-open:rotate-180 transition-transform" />
+                        <details key={idx} className="memory-revision">
+                          <summary>
+                            <span>{rev.title}</span>
+                            <time>{new Date(rev.editedAt).toLocaleString()}</time>
                           </summary>
-                          <div className="p-6 pt-0 border-t border-white/10 mt-2">
-                            <h4 className="text-xl font-medium text-white/80 mb-4 mt-6">{rev.title}</h4>
-                            <div className="prose prose-invert max-w-none text-white/50 font-light whitespace-pre-wrap leading-relaxed">
-                              {rev.content}
-                            </div>
-                          </div>
+                          <p>{rev.content}</p>
                         </details>
                       ))}
                     </div>
-                  </div>
+                  </section>
                 )}
               </div>
-            </motion.div>
-          </motion.div>
+            </motion.section>
+          </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

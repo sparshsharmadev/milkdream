@@ -1,4 +1,9 @@
-"use client";
+/**
+ * Motion Intent: Focused authentication pages with clean field micro-interactions.
+ * - Form entrance: 400ms easeOut.
+ * - Button spring feedback (hover: 1.05, tap: 0.97).
+ * - Accessible input outlines and error states.
+ */
 
 "use client";
 
@@ -7,9 +12,11 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPa
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { getFirebaseErrorMessage } from "@/lib/errorUtils";
+import { pageVariants, buttonMotion } from "@/lib/motion.config";
+import DreamMark from "@/components/DreamMark";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,7 +40,7 @@ export default function LoginPage() {
         return;
       }
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFirebaseErrorMessage(err));
       setLoading(false);
     }
@@ -49,7 +56,7 @@ export default function LoginPage() {
     try {
       await sendPasswordResetEmail(auth, email);
       setMsg("Password reset email sent.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFirebaseErrorMessage(err));
     }
   };
@@ -59,124 +66,154 @@ export default function LoginPage() {
     try {
       await signInWithPopup(auth, provider);
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFirebaseErrorMessage(err));
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row relative z-10 pt-20">
-      
-      <Link href="/" className="absolute top-8 left-6 md:left-20 flex items-center space-x-2 text-white/50 hover:text-white transition-colors z-50">
-        <ArrowLeft className="w-5 h-5" />
-        <span className="font-medium tracking-wide">Home</span>
-      </Link>
-      
-      {/* Left side: Typography */}
-      <div className="w-full md:w-1/2 p-6 md:p-20 flex flex-col justify-center">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <h1 className="text-5xl md:text-8xl font-medium tracking-normal mb-6 text-white leading-none font-serif italic">
-            Sign In.
-          </h1>
-          <p className="text-xl md:text-2xl text-white/50 font-light max-w-md">
-            Enter the void. Access your captured moments in time.
-          </p>
-        </motion.div>
-      </div>
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="auth-page"
+    >
+      <div className="auth-shell">
+        <aside className="auth-editorial">
+          <Link href="/" className="auth-brand">
+            <DreamMark className="dream-mark auth-brand-mark" />
+            <span>Milkdream <small>PERSONAL MEMORY ARCHIVE</small></span>
+          </Link>
+          <div className="auth-editorial-copy">
+            <span className="auth-overline">RETURN TO YOUR NOTES</span>
+            <p>Some things are worth<br />remembering <em>exactly.</em></p>
+            <div className="auth-mark" aria-hidden="true">
+              <span className="auth-mark-line" />
+              <span className="auth-mark-label">PRIVATE / BY DESIGN</span>
+            </div>
+          </div>
+          <span className="auth-edition">FIELD RECORD 01&nbsp;&nbsp;·&nbsp;&nbsp;MILKDREAM</span>
+        </aside>
 
-      {/* Right side: Editorial Form */}
-      <div className="w-full md:w-1/2 p-6 md:p-20 flex flex-col justify-center">
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-md">
-          
+        <section className="auth-form-panel" aria-labelledby="login-title">
+          <Link href="/" className="auth-back"><ArrowLeft size={15} /> Home</Link>
+          <div className="auth-form-heading">
+            <span className="auth-overline">YOUR ARCHIVE IS HERE</span>
+            <h1 id="login-title">Welcome<br /><em>back.</em></h1>
+            <p>Sign in to pick up where you left off.</p>
+          </div>
+
+        {/* Feedback Banners */}
+        <AnimatePresence>
           {error && (
-            <div className="mb-8 p-4 border-l-2 border-white text-white text-sm bg-white/5">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="auth-feedback auth-feedback-error"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
-          
           {msg && (
-            <div className="mb-8 p-4 border-l-2 border-white text-white text-sm bg-white/5">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="auth-feedback auth-feedback-success"
+            >
               {msg}
-            </div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          <form onSubmit={handleLogin} className="space-y-12">
-            
-            <div className="relative">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="peer w-full bg-transparent border-b border-white/20 py-4 text-2xl md:text-3xl text-white placeholder-transparent focus:outline-none focus:border-white transition-colors"
-                placeholder="Email"
-                required
-                id="email"
-              />
-              <label htmlFor="email" className="absolute left-0 -top-6 text-sm font-medium text-white/50 transition-all peer-placeholder-shown:text-2xl peer-placeholder-shown:top-4 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-white pointer-events-none">
-                Email Address
+        {/* Form */}
+        <form onSubmit={handleLogin} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="email">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="auth-input"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div className="auth-field">
+            <div className="auth-label-row">
+              <label htmlFor="password">
+                Password
               </label>
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="auth-text-button"
+              >
+                Reset
+              </button>
             </div>
-
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="peer w-full bg-transparent border-b border-white/20 py-4 pr-24 text-2xl md:text-3xl text-white placeholder-transparent focus:outline-none focus:border-white transition-colors"
-                placeholder="Password"
                 required
-                id="password"
+                className="auth-input auth-password-input"
+                placeholder="••••••••"
               />
-              <label htmlFor="password" className="absolute left-0 -top-6 text-sm font-medium text-white/50 transition-all peer-placeholder-shown:text-2xl peer-placeholder-shown:top-4 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-white pointer-events-none">
-                Password
-              </label>
-              <div className="absolute right-0 bottom-4 flex items-center space-x-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-white/40 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={handleResetPassword}
-                  className="text-xs text-white/40 hover:text-white uppercase tracking-widest transition-colors"
-                >
-                  Reset
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="auth-eye-button"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+          </div>
 
-            <button
+          <div className="auth-submit-wrap">
+            <motion.button
+              {...buttonMotion}
               type="submit"
               disabled={loading}
-              className="group w-full py-6 flex items-center justify-between border-b border-white/20 hover:border-white transition-colors disabled:opacity-50"
+              className="auth-submit"
             >
-              <span className="text-2xl font-light">{loading ? "Authenticating..." : "Continue"}</span>
-              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-            </button>
-          </form>
-
-          <div className="mt-16 pt-8 border-t border-white/10">
-            <button
-              onClick={handleGoogleLogin}
-              type="button"
-              className="w-full flex items-center justify-between py-4 text-white/60 hover:text-white transition-colors group"
-            >
-              <span className="text-lg font-light">Continue with Google</span>
-              <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all" />
-            </button>
+              <span>{loading ? "Authenticating..." : "Sign In"}</span>
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
           </div>
+        </form>
 
-          <div className="mt-16">
-            <p className="text-white/40 text-sm">
-              No account? <Link href="/register" className="text-white hover:underline transition-all">Create capsule</Link>
-            </p>
-          </div>
+        {/* Google OAuth */}
+        <div className="auth-divider"><span>OR</span></div>
+        <div className="auth-google-wrap">
+          <motion.button
+            {...buttonMotion}
+            type="button"
+            onClick={handleGoogleLogin}
+            className="auth-google"
+          >
+            Continue with Google
+          </motion.button>
+        </div>
 
-        </motion.div>
+        {/* Footer */}
+        <div className="auth-switch">
+          New to Milkdream?{" "}
+          <Link href="/register">
+            Create an archive <ArrowRight size={14} />
+          </Link>
+        </div>
+        <div className="auth-privacy"><LockKeyhole size={14} /> Your reflections stay yours.</div>
+        </section>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,19 +1,16 @@
+/**
+ * Motion Intent: High-performance accessible root layout.
+ * Clean, dark-mode foundational frame providing smooth font rendering and non-intrusive container.
+ */
+
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Navigation from "@/components/Navigation";
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
-import { EB_Garamond } from 'next/font/google';
 import type { Metadata } from "next";
 
-const ebGaramond = EB_Garamond({
-  subsets: ['latin'],
-  variable: '--font-serif',
-});
-
 export const metadata: Metadata = {
-  title: "Milkdream | Time Capsule",
-  description: "Capture memories and send them through time.",
+  title: "Milkdream — Cognitive Archive",
+  description: "Capture exact moments. Speak to the void. Send reflections through time.",
 };
 
 export default function RootLayout({
@@ -22,12 +19,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${ebGaramond.variable}`}>
-      <body className="antialiased min-h-screen text-white bg-black font-sans selection:bg-white selection:text-black">
-        <div className="bg-noise"></div>
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-[#09090b] text-[#fafafa] selection:bg-white selection:text-black">
         <AuthProvider>
           <Navigation />
-          <main className="pt-20 relative z-10">
+          <main className="pt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {children}
           </main>
         </AuthProvider>

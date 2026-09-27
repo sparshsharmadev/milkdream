@@ -1,6 +1,11 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  getFirestore
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBo3_rqG6llTSwkT7s8vsjpJzKk6GU1sVE",
@@ -12,9 +17,22 @@ const firebaseConfig = {
   appId: "1:831956584908:web:13059f9fb8f456af367569"
 };
 
-// Initialize Firebase only once
+// Initialize Firebase app only once
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Initialize Firestore with offline persistence support for web
+let db: ReturnType<typeof getFirestore>;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch (e) {
+  // If already initialized, retrieve existing instance
+  db = getFirestore(app);
+}
 
 export { app, auth, db };
+

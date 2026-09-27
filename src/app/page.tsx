@@ -1,71 +1,103 @@
+/**
+ * Motion Intent: Landing page with choreographed hierarchy.
+ * - Staggered entrance (staggerChildren: 60ms, duration: 400ms, ease: [0.25, 0.1, 0.25, 1])
+ * - Spring micro-interactions on CTA buttons (scale: 1.05 hover, scale: 0.97 tap)
+ * - Accessible contrast and typography.
+ */
+
 "use client";
 
-import { motion, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowDownRight, ArrowRight, Clock3, LockKeyhole, MapPin, Plus } from "lucide-react";
+import { pageVariants } from "@/lib/motion.config";
+import DreamMark from "@/components/DreamMark";
 
 export default function Home() {
-  const container: Variants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  };
-
-  const item: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { type: "spring", stiffness: 50, damping: 20 } 
-    }
-  };
-
   return (
-    <div className="min-h-[calc(100vh-80px)] flex flex-col justify-center px-6 md:px-20 relative z-10">
-      <motion.div 
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="w-full max-w-7xl mx-auto"
-      >
-        <motion.div variants={item} className="mb-12">
-          <div className="flex items-center space-x-6">
-            <div className="h-[1px] w-12 md:w-24 bg-white/30"></div>
-            <span className="text-[10px] md:text-xs tracking-[0.4em] uppercase font-medium text-white/50">
-              Capture the moment
-            </span>
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="archive-home"
+    >
+      <header className="home-masthead">
+        <Link href="/" className="home-brand" aria-label="Milkdream home">
+          <DreamMark className="dream-mark home-brand-mark" />
+          <span className="home-brand-name">Milkdream<small>PERSONAL MEMORY ARCHIVE</small></span>
+        </Link>
+        <nav className="home-nav" aria-label="Main navigation">
+          <a href="#how-it-works">The archive</a>
+          <Link href="/login" className="home-signin">Sign in <ArrowRight size={15} /></Link>
+        </nav>
+      </header>
+
+      <section className="home-hero" aria-labelledby="home-title">
+        <div className="home-hero-copy">
+          <div className="home-kicker"><span>FIELD NOTES FOR THE FUTURE</span><span>NO. 001 / OPEN</span></div>
+          <h1 id="home-title">Keep a little<br />of <em>now.</em></h1>
+          <p className="home-hero-deck">A personal archive for the moments you want to remember as they really were.</p>
+          <div className="home-hero-actions">
+            <Link href="/register" className="home-primary-action">Create your archive <ArrowRight size={17} /></Link>
+            <Link href="/login" className="home-secondary-action">I already have an account</Link>
           </div>
-        </motion.div>
+          <span className="home-action-note">Private by design · Free to begin</span>
+        </div>
 
-        <motion.h1 variants={item} className="text-6xl sm:text-7xl md:text-[10rem] font-medium tracking-normal mb-8 leading-[0.9] text-white mix-blend-difference font-serif italic">
-          Milkdream.
-        </motion.h1>
-        
-        <motion.p variants={item} className="text-xl md:text-3xl text-white/50 mb-16 max-w-3xl leading-snug font-light">
-          Capture exact moments. Speak to the void. Leave notes for your future self. Pure, unadulterated time.
-        </motion.p>
+        <aside className="home-specimen" aria-label="Example saved reflection">
+          <div className="specimen-topline"><span>EXAMPLE REFLECTION</span><span>MD—001</span></div>
+          <div className="specimen-date"><span>TUESDAY</span><strong>14</strong><span>OCTOBER · 2025</span></div>
+          <div className="specimen-content">
+            <span className="specimen-tag">SMALL THINGS</span>
+            <h2>The light in the kitchen</h2>
+            <p>It was late afternoon, and the whole room turned the color of honey. I stopped what I was doing just long enough to notice.</p>
+            <span className="specimen-label">A made-up example of a saved note</span>
+          </div>
+          <div className="specimen-footer">
+            <span><MapPin size={13} /> Home, near the window</span>
+            <span><Clock3 size={13} /> 4:42 pm</span>
+          </div>
+        </aside>
+        <div className="home-orbit-note"><ArrowDownRight size={17} /><span>ONE MOMENT<br />AT A TIME</span></div>
+      </section>
 
-        <motion.div variants={item} className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4 sm:gap-6">
-          <Link 
-            href="/register" 
-            className="group relative px-10 py-5 bg-white text-black font-semibold flex items-center justify-center space-x-3 transition-transform hover:scale-105 active:scale-95"
-          >
-            <span className="relative z-10 text-lg tracking-wide">Enter the cluster</span>
-            <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-2 transition-transform" />
-          </Link>
-          <Link 
-            href="/login" 
-            className="px-10 py-5 bg-transparent border border-white/20 text-white font-semibold hover:bg-white/5 transition-colors text-lg tracking-wide"
-          >
-            Sign In
-          </Link>
-        </motion.div>
-      </motion.div>
-    </div>
+      <section className="home-reading" id="how-it-works" aria-label="About your archive">
+        <div className="home-reading-label">
+          <span>THE PRACTICE</span>
+          <span className="home-rule" />
+          <span>01 / 03</span>
+        </div>
+        <div className="home-reading-copy">
+          <p className="home-dropcap">Write down what happened while the details are still close: the conversation, the route home, the exact feeling you nearly forgot. Add a place and time when they help tell the story. Your reflection stays in your archive, and later edits become earlier versions instead of replacing what you first wrote. Come back to read the original, follow how your thinking changed, or export a note to keep elsewhere. Milkdream is built for remembering in your own words, without turning private moments into a public feed.</p>
+        </div>
+        <div className="home-actions">
+          <span className="home-action-caption">A SMALL START</span>
+          <span className="home-action-detail"><Plus size={15} /> One entry is enough.</span>
+        </div>
+      </section>
+
+      <section className="home-index-list" aria-label="Archive details">
+        <article className="home-index-item">
+          <span className="home-item-number">A</span>
+          <MapPin size={18} strokeWidth={1.5} aria-hidden="true" />
+          <div><h2>Place & time</h2><p>Keep the context around the thought.</p></div>
+        </article>
+        <article className="home-index-item">
+          <span className="home-item-number">B</span>
+          <Clock3 size={18} strokeWidth={1.5} aria-hidden="true" />
+          <div><h2>Every version</h2><p>Follow an idea as it shifts.</p></div>
+        </article>
+        <article className="home-index-item">
+          <span className="home-item-number">C</span>
+          <LockKeyhole size={18} strokeWidth={1.5} aria-hidden="true" />
+          <div><h2>Yours alone</h2><p>A quiet archive, made for you.</p></div>
+        </article>
+      </section>
+
+      <footer className="home-bottom-note">
+        <span>YOUR WORDS. YOUR TIMELINE. YOURS TO KEEP.</span>
+        <Link href="/register">Begin with one reflection <ArrowRight size={15} /></Link>
+      </footer>
+    </motion.div>
   );
 }

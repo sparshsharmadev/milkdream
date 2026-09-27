@@ -1,4 +1,8 @@
-"use client";
+/**
+ * Motion Intent: Registration with focused micro-interactions and accessible feedback.
+ * - Form entrance: 400ms easeOut.
+ * - Interactive spring buttons.
+ */
 
 "use client";
 
@@ -7,9 +11,11 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { getFirebaseErrorMessage } from "@/lib/errorUtils";
+import { pageVariants, buttonMotion } from "@/lib/motion.config";
+import DreamMark from "@/components/DreamMark";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -27,100 +33,124 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
       router.push("/verify");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getFirebaseErrorMessage(err));
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row relative z-10 pt-20">
-      
-      <Link href="/" className="absolute top-8 left-6 md:left-20 flex items-center space-x-2 text-white/50 hover:text-white transition-colors z-50">
-        <ArrowLeft className="w-5 h-5" />
-        <span className="font-medium tracking-wide">Home</span>
-      </Link>
-      
-      {/* Left side: Typography */}
-      <div className="w-full md:w-1/2 p-6 md:p-20 flex flex-col justify-center">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <h1 className="text-5xl md:text-8xl font-medium tracking-normal mb-6 text-white leading-none font-serif italic">
-            Join.
-          </h1>
-          <p className="text-xl md:text-2xl text-white/50 font-light max-w-md">
-            Create an anchor in the continuum.
-          </p>
-        </motion.div>
-      </div>
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="auth-page"
+    >
+      <div className="auth-shell">
+        <aside className="auth-editorial">
+          <Link href="/" className="auth-brand">
+            <DreamMark className="dream-mark auth-brand-mark" />
+            <span>Milkdream <small>PERSONAL MEMORY ARCHIVE</small></span>
+          </Link>
+          <div className="auth-editorial-copy">
+            <span className="auth-overline">A PLACE TO KEEP THE MOMENT</span>
+            <p>Start with what<br />you <em>remember.</em></p>
+            <div className="auth-mark" aria-hidden="true">
+              <span className="auth-mark-line" />
+              <span className="auth-mark-label">PRIVATE / BY DESIGN</span>
+            </div>
+          </div>
+          <span className="auth-edition">FIELD RECORD 01&nbsp;&nbsp;·&nbsp;&nbsp;MILKDREAM</span>
+        </aside>
 
-      {/* Right side: Editorial Form */}
-      <div className="w-full md:w-1/2 p-6 md:p-20 flex flex-col justify-center">
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full max-w-md">
-          
+        <section className="auth-form-panel" aria-labelledby="register-title">
+          <Link href="/" className="auth-back"><ArrowLeft size={15} /> Home</Link>
+          <div className="auth-form-heading">
+            <span className="auth-overline">YOUR FIRST PAGE</span>
+            <h1 id="register-title">Make room<br /><em>for memory.</em></h1>
+            <p>Create a private account to begin your archive.</p>
+          </div>
+
+        {/* Feedback Banners */}
+        <AnimatePresence>
           {error && (
-            <div className="mb-8 p-4 border-l-2 border-white text-white text-sm bg-white/5">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="auth-feedback auth-feedback-error"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          <form onSubmit={handleRegister} className="space-y-12">
-            
-            <div className="relative">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="peer w-full bg-transparent border-b border-white/20 py-4 text-2xl md:text-3xl text-white placeholder-transparent focus:outline-none focus:border-white transition-colors"
-                placeholder="Email"
-                required
-                id="email"
-              />
-              <label htmlFor="email" className="absolute left-0 -top-6 text-sm font-medium text-white/50 transition-all peer-placeholder-shown:text-2xl peer-placeholder-shown:top-4 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-white pointer-events-none">
-                Email Address
-              </label>
-            </div>
+        {/* Form */}
+        <form onSubmit={handleRegister} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="email">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="auth-input"
+              placeholder="you@example.com"
+            />
+          </div>
 
+          <div className="auth-field">
+            <label htmlFor="password">
+              Password (min. 6 characters)
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="peer w-full bg-transparent border-b border-white/20 py-4 pr-12 text-2xl md:text-3xl text-white placeholder-transparent focus:outline-none focus:border-white transition-colors"
-                placeholder="Password"
                 required
-                id="password"
                 minLength={6}
+                className="auth-input auth-password-input"
+                placeholder="••••••••"
               />
-              <label htmlFor="password" className="absolute left-0 -top-6 text-sm font-medium text-white/50 transition-all peer-placeholder-shown:text-2xl peer-placeholder-shown:top-4 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-white pointer-events-none">
-                Password
-              </label>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-0 bottom-4 text-white/40 hover:text-white transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="auth-eye-button"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="group w-full py-6 flex items-center justify-between border-b border-white/20 hover:border-white transition-colors disabled:opacity-50"
-            >
-              <span className="text-2xl font-light">{loading ? "Registering..." : "Create Capsule"}</span>
-              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-            </button>
-          </form>
-
-          <div className="mt-16">
-            <p className="text-white/40 text-sm">
-              Already have an anchor? <Link href="/login" className="text-white hover:underline transition-all">Sign In</Link>
-            </p>
           </div>
 
-        </motion.div>
+          <div className="auth-submit-wrap">
+            <motion.button
+              {...buttonMotion}
+              type="submit"
+              disabled={loading}
+              className="auth-submit"
+            >
+              <span>{loading ? "Registering..." : "Create Account"}</span>
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
+          </div>
+        </form>
+
+        {/* Footer */}
+        <div className="auth-switch">
+          Already have an archive?{" "}
+          <Link href="/login">
+            Sign in <ArrowRight size={14} />
+          </Link>
+        </div>
+        <div className="auth-privacy"><LockKeyhole size={14} /> Your reflections stay yours.</div>
+        </section>
       </div>
-    </div>
+    </motion.div>
   );
 }
